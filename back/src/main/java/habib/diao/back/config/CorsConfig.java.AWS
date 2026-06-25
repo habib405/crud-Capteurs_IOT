@@ -1,0 +1,72 @@
+package habib.diao.back.config;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+/**
+ * Configuration CORS pour développement local ET AWS
+ * En production sur AWS, adapter allowedOrigins avec le vrai domaine
+ */
+@Configuration
+public class CorsConfig implements WebMvcConfigurer {
+    
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        // --- Développement local ---
+        String[] devOrigins = {
+            "http://localhost",
+            "http://localhost:5173",
+            "http://localhost:80",
+            "http://127.0.0.1",
+            "http://127.0.0.1:5173",
+            "http://127.0.0.1:80"
+        };
+        
+        // --- Production AWS (À ADAPTER) ---
+        // String[] prodOrigins = {
+        //     "https://mon-app-aws.com",
+        //     "https://www.mon-app-aws.com"
+        // };
+        
+        // Utiliser devOrigins pour dev, prodOrigins pour prod
+        String[] allowedOrigins = devOrigins;  // À changer pour prod
+        
+        // API REST endpoints
+        registry.addMapping("/api/**")
+                .allowedOrigins(allowedOrigins)
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedHeaders("*")
+                .allowCredentials(true)
+                .maxAge(3600);
+
+        // Swagger OpenAPI docs
+        registry.addMapping("/v3/api-docs")
+                .allowedOrigins(allowedOrigins)
+                .allowedMethods("GET", "OPTIONS")
+                .allowedHeaders("*")
+                .allowCredentials(true)
+                .maxAge(3600);
+
+        registry.addMapping("/v3/api-docs/**")
+                .allowedOrigins(allowedOrigins)
+                .allowedMethods("GET", "OPTIONS")
+                .allowedHeaders("*")
+                .allowCredentials(true)
+                .maxAge(3600);
+
+        registry.addMapping("/swagger-ui/**")
+                .allowedOrigins(allowedOrigins)
+                .allowedMethods("GET", "OPTIONS")
+                .allowedHeaders("*")
+                .allowCredentials(true)
+                .maxAge(3600);
+
+        registry.addMapping("/swagger-ui.html")
+                .allowedOrigins(allowedOrigins)
+                .allowedMethods("GET", "OPTIONS")
+                .allowedHeaders("*")
+                .allowCredentials(true)
+                .maxAge(3600);
+    }
+}
