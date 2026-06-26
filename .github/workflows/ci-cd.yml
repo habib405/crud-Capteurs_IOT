@@ -93,7 +93,7 @@ jobs:
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/capteurs-iot-web:latest
 
   # ==========================================
-  # JOB 3 : DEPLOY (Mise en ligne sur AWS K3s)
+  # JOB 3 : DEPLOY (Mise en ligne sur AWS K3s
   # ==========================================
   deploy:
     name: Déployer sur Kubernetes (K3s)
