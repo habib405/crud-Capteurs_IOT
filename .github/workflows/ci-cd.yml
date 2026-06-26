@@ -71,10 +71,10 @@ jobs:
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/capteurs-iot-web:latest
 
   # ==========================================
-  # JOB 3 : DEPLOY (Mise en ligne sur AWS EC2)
+  # JOB 3 : DEPLOY (Mise en ligne sur AWS K3s)
   # ==========================================
   deploy:
-    name: Déployer sur AWS
+    name: Déployer sur Kubernetes (K3s)
     needs: build
     runs-on: ubuntu-latest
     steps:
@@ -85,60 +85,119 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # 1. Creer le dossier du projet
-            mkdir -p ~/projet-iot
+            # 1. Creer les dossiers
+            mkdir -p ~/projet-iot/k8s
             cd ~/projet-iot
 
-            # 2. Generer le fichier docker-compose.yml de production
-            cat << 'EOF' > docker-compose.yml
-            version: '3.8'
-            services:
-              db:
-                image: postgres:15-alpine
-                container_name: postgres-db
-                environment:
-                  POSTGRES_USER: admin
-                  POSTGRES_PASSWORD: habib
-                  POSTGRES_DB: iot_db
-                volumes:
-                  - postgres-data:/var/lib/postgresql/data
-                ports:
-                  - "5432:5432"
-                networks:
-                  - app-network
-
-              backend-api:
-                image: ${{ secrets.DOCKERHUB_USERNAME }}/capteurs-iot-api:latest
-                container_name: springboot-api
-                ports:
-                  - "8080:8080"
-                environment:
-                  - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/iot_db
-                  - SPRING_DATASOURCE_USERNAME=admin
-                  - SPRING_DATASOURCE_PASSWORD=habib
-                depends_on:
-                  - db
-                networks:
-                  - app-network
-
-              frontend-ui:
-                image: ${{ secrets.DOCKERHUB_USERNAME }}/capteurs-iot-web:latest
-                container_name: react-ui
-                ports:
-                  - "80:80"
-                depends_on:
-                  - backend-api
-                networks:
-                  - app-network
-
-            volumes:
-              postgres-data:
-
-            networks:
-              app-network:
-                driver: bridge
+            # 2. Generer le YAML de la Base de Donnees
+            cat << 'EOF' > k8s/postgres.yaml
+            apiVersion: v1
+            kind: PersistentVolumeClaim
+            metadata:
+              name: postgres-data
+            spec:
+              accessModes: [ReadWriteOnce]
+              resources: { requests: { storage: 1Gi } }
+            ---
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: postgres-db
+            spec:
+              selector: { matchLabels: { app: postgres } }
+              template:
+                metadata: { labels: { app: postgres } }
+                spec:
+                  containers:
+                  - name: postgres
+                    image: postgres:15-alpine
+                    env:
+                    - name: POSTGRES_USER
+                      value: admin
+                    - name: POSTGRES_PASSWORD
+                      value: habib
+                    - name: POSTGRES_DB
+                      value: iot_db
+                    ports: [{ containerPort: 5432 }]
+                    volumeMounts:
+                    - name: db-data
+                      mountPath: /var/lib/postgresql/data
+                  volumes:
+                  - name: db-data
+                    persistentVolumeClaim: { claimName: postgres-data }
+            ---
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: db
+            spec:
+              selector: { app: postgres }
+              ports: [{ port: 5432 }]
             EOF
 
-            # 3. Telecharger les nouvelles images et relancer
-            sudo docker-compose pull
-            sudo docker-compose up -d
+            # 3. Generer le YAML du Backend API
+            cat << 'EOF' > k8s/backend.yaml
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: backend-api
+            spec:
+              selector: { matchLabels: { app: backend } }
+              template:
+                metadata: { labels: { app: backend } }
+                spec:
+                  containers:
+                  - name: backend
+                    image: ${{ secrets.DOCKERHUB_USERNAME }}/capteurs-iot-api:latest
+                    imagePullPolicy: Always
+                    env:
+                    - name: SPRING_DATASOURCE_URL
+                      value: jdbc:postgresql://db:5432/iot_db
+                    - name: SPRING_DATASOURCE_USERNAME
+                      value: admin
+                    - name: SPRING_DATASOURCE_PASSWORD
+                      value: habib
+                    ports: [{ containerPort: 8080 }]
+            ---
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: backend-service
+            spec:
+              type: LoadBalancer
+              selector: { app: backend }
+              ports: [{ port: 8080, targetPort: 8080 }]
+            EOF
+
+            # 4. Generer le YAML du Frontend React
+            cat << 'EOF' > k8s/frontend.yaml
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: frontend-ui
+            spec:
+              selector: { matchLabels: { app: frontend } }
+              template:
+                metadata: { labels: { app: frontend } }
+                spec:
+                  containers:
+                  - name: frontend
+                    image: ${{ secrets.DOCKERHUB_USERNAME }}/capteurs-iot-web:latest
+                    imagePullPolicy: Always
+                    ports: [{ containerPort: 80 }]
+            ---
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: frontend-service
+            spec:
+              type: LoadBalancer
+              selector: { app: frontend }
+              ports: [{ port: 80, targetPort: 80 }]
+            EOF
+
+            # 5. Ordonner a K3s de creer/mettre a jour l'infrastructure
+            sudo kubectl apply -f k8s/
+            
+            # 6. Redemarrer les conteneurs pour forcer la recuperation des nouvelles images
+            sudo kubectl rollout restart deployment backend-api frontend-ui
