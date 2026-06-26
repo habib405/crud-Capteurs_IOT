@@ -1,0 +1,144 @@
+name: CI/CD Pipeline AWS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  # ==========================================
+  # JOB 1 : TESTS (Vérification du code)
+  # ==========================================
+  test:
+    name: Tester le code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Configuration de Java 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Tests Backend (Spring Boot)
+        run: |
+          cd back
+          chmod +x mvnw
+          ./mvnw test
+
+      - name: Configuration de Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Installation et Build Frontend (Vérification)
+        run: |
+          cd front
+          npm install
+          npm run build
+
+  # ==========================================
+  # JOB 2 : BUILD (Création et envoi des images)
+  # ==========================================
+  build:
+    name: Construire et Pousser
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Connexion a Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build et Push Backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./back
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/capteurs-iot-api:latest
+
+      - name: Build et Push Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./front
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/capteurs-iot-web:latest
+
+  # ==========================================
+  # JOB 3 : DEPLOY (Mise en ligne sur AWS EC2)
+  # ==========================================
+  deploy:
+    name: Déployer sur AWS
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploiement sur AWS EC2 via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # 1. Creer le dossier du projet
+            mkdir -p ~/projet-iot
+            cd ~/projet-iot
+
+            # 2. Generer le fichier docker-compose.yml de production
+            cat << 'EOF' > docker-compose.yml
+            version: '3.8'
+            services:
+              db:
+                image: postgres:15-alpine
+                container_name: postgres-db
+                environment:
+                  POSTGRES_USER: admin
+                  POSTGRES_PASSWORD: habib
+                  POSTGRES_DB: iot_db
+                volumes:
+                  - postgres-data:/var/lib/postgresql/data
+                ports:
+                  - "5432:5432"
+                networks:
+                  - app-network
+
+              backend-api:
+                image: ${{ secrets.DOCKERHUB_USERNAME }}/capteurs-iot-api:latest
+                container_name: springboot-api
+                ports:
+                  - "8080:8080"
+                environment:
+                  - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/iot_db
+                  - SPRING_DATASOURCE_USERNAME=admin
+                  - SPRING_DATASOURCE_PASSWORD=habib
+                depends_on:
+                  - db
+                networks:
+                  - app-network
+
+              frontend-ui:
+                image: ${{ secrets.DOCKERHUB_USERNAME }}/capteurs-iot-web:latest
+                container_name: react-ui
+                ports:
+                  - "80:80"
+                depends_on:
+                  - backend-api
+                networks:
+                  - app-network
+
+            volumes:
+              postgres-data:
+
+            networks:
+              app-network:
+                driver: bridge
+            EOF
+
+            # 3. Telecharger les nouvelles images et relancer
+            sudo docker-compose pull
+            sudo docker-compose up -d
