@@ -18,8 +18,8 @@ public class CorsConfig implements WebMvcConfigurer {
             "http://127.0.0.1",
             "http://127.0.0.1:5173",
             "http://127.0.0.1:80",
-            "http://51.20.79.39", // Ton IP publique AWS
-            "http://ec2-51-20-79-39.eu-north-1.compute.amazonaws.com" // Ton DNS public AWS
+            "http://51.20.79.39", 
+            "http://ec2-51-20-79-39.eu-north-1.compute.amazonaws.com" 
         };
         
         registry.addMapping("/api/**")
