@@ -12,6 +12,23 @@ jobs:
   test:
     name: Tester le code
     runs-on: ubuntu-latest
+    
+    # 1. On lance une base de données temporaire pour les tests
+    services:
+      db:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: admin
+          POSTGRES_PASSWORD: habib
+          POSTGRES_DB: iot_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout du code
         uses: actions/checkout@v4
@@ -23,6 +40,11 @@ jobs:
           java-version: '17'
 
       - name: Tests Backend (Spring Boot)
+        # 2. On force Spring Boot à utiliser cette base temporaire locale
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/iot_db
+          SPRING_DATASOURCE_USERNAME: admin
+          SPRING_DATASOURCE_PASSWORD: habib
         run: |
           cd back
           chmod +x mvnw
@@ -89,7 +111,7 @@ jobs:
             mkdir -p ~/projet-iot/k8s
             cd ~/projet-iot
 
-            # 2. Generer le YAML de la Base de Donnees
+            # 2. Generer le YAML de la Base de Donnees 
             cat << 'EOF' > k8s/postgres.yaml
             apiVersion: v1
             kind: PersistentVolumeClaim
