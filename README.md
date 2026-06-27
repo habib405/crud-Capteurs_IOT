@@ -1,108 +1,82 @@
-# CRUD Capteurs IoT
+📌 Vision du Projet
 
-Projet fullstack démontrant un CRUD sur une entité `CapteurConnecte` avec backend Spring Boot, frontend React et persistance PostgreSQL.
+Ce projet est une application Full Stack de gestion et supervision de capteurs IoT. Au-delà du développement de l'application métier (CRUD interactif), l'objectif d'ingénierie principal est l'implémentation d'une culture DevSecOps. L'architecture a été pensée pour être découplée, sécurisée by-design et entièrement automatisée de bout en bout vers le cloud AWS.
 
-## ✅ Objectif
-- Réaliser un CRUD complet sur une entité métier
-- Présenter une architecture claire backend/frontend
-- Montrer validation, gestion d’erreurs, API REST et interface utilisateur
-- Ajouter de la documentation via Swagger
+💻 1. DEV : Développement & Architecture Logicielle
 
-## 🧱 Architecture
-- `back/` : Spring Boot + JPA + validation
-- `front/` : React + Vite + Axios
-- `docker-compose.yml` : PostgreSQL + backend + frontend
-- `back/src/main/java/habib/diao/back/model/CapteurConnecte/CapteurConnecte.java` : entité principale
+La couche applicative repose sur une architecture en micro-services (Backend / Frontend / Base de données) garantissant la séparation des responsabilités.
 
-## 🌟 Fonctionnalités principales
-- Création, lecture, mise à jour, suppression de capteurs
-- Validation métier côté backend
-- `reference` unique et `valeurSeuil` bornée entre -50 et 100
-- API REST avec statuts HTTP appropriés
-  - `201 Created` pour POST
-  - `200 OK` pour GET / PUT
-  - `204 No Content` pour DELETE
-- Interface React simple et responsive
-- Documentation Swagger disponible
+Stack Technique
 
-## 🚀 Démarrage rapide
-### Avec Docker
-```bash
-cd "c:\Users\bmd\OneDrive\Desktop\notes cours\crud-Capteurs_IOT"
-docker-compose up --build
-```
+Frontend (UI) : Application Single Page développée en React.js (via Vite pour des temps de build optimisés), consommant l'API de manière asynchrone (Axios/Fetch).
 
-### En développement local
-#### Backend
-```bash
-cd back
-# Windows PowerShell
-./mvnw.cmd spring-boot:run
-# ou Git Bash / Linux
-./mvnw spring-boot:run
-```
+Backend (API) : Java avec Spring Boot 3. L'API REST est structurée selon les principes de la Clean Architecture (Controllers, Services, Repositories).
 
-#### Frontend
-```bash
-cd front
-npm install
-npm run dev
-```
+Base de données : PostgreSQL 15, garantissant les propriétés ACID nécessaires à l'intégrité des données des capteurs industriels.
 
-## 🔌 API
-Base : `http://localhost:8080/api/capteurs`
+Qualité du Code
 
-- `GET /api/capteurs`
-- `GET /api/capteurs/{id}`
-- `POST /api/capteurs`
-- `PUT /api/capteurs/{id}`
-- `DELETE /api/capteurs/{id}`
+Validation stricte : Utilisation des annotations de validation Jakarta (@Valid, @NotNull) pour rejeter les payloads malformés dès l'entrée des contrôleurs.
 
-## 📘 Documentation Swagger
-Après démarrage du backend, Swagger UI est disponible à :
+Typage fort : Utilisation avancée de Java 17 et de la modélisation objet pour représenter fidèlement l'état des capteurs connectés.
 
-`http://localhost:8080/swagger-ui/index.html`
+🛠️ Démarrage Local
 
-Le schéma OpenAPI brut est également accessible à :
+git clone [https://github.com/habibdiao405/crud-Capteurs_IOT.git](https://github.com/habibdiao405/crud-Capteurs_IOT.git)
+cd crud-Capteurs_IOT
+docker compose up -d
 
-`http://localhost:8080/v3/api-docs`
 
-> Le backend autorise désormais les requêtes CORS vers Swagger depuis `localhost` et `127.0.0.1` pour le développement local.
+L'interface sera accessible sur http://localhost:80 et l'API sur http://localhost:8080.
 
-## 🔧 Points techniques à mettre en valeur
-- Séparation controller / service / repository
-- Validation Spring + gestion centralisée des erreurs
-- CORS configuré pour le développement local
-- Axios configuré via variable d’environnement Vite
-- Composants React factorisés pour rendre le code plus lisible
+🛡️ 2. SEC : Sécurité Numérique & Réseau
 
-## 🎯 Améliorations possibles
-- Ajouter des tests unitaires et d’intégration
-- Utiliser des DTO pour séparer entité et API
-- Ajouter authentification et gestion de rôles
-- Externaliser le style CSS dans des fichiers dédiés
-- Ajouter un fichier `README` de déploiement plus complet
+La sécurité a été intégrée à tous les niveaux de l'infrastructure, du code jusqu'au pare-feu cloud.
 
-## � CI/CD et déploiement
-Ce projet inclut désormais un workflow GitHub Actions pour :
-- builder le backend Spring Boot
-- builder le frontend React/Vite
-- publier deux images Docker sur Docker Hub
-- déclencher un déploiement AWS ECS si les secrets AWS sont configurés
+Politique CORS stricte : Implémentation d'une configuration globale centralisée (CorsConfig). Utilisation de allowedOriginPatterns pour autoriser exclusivement le domaine applicatif AWS et bloquer les requêtes inter-sites malveillantes (CSRF).
 
-### Secrets GitHub nécessaires
-- `DOCKERHUB_USERNAME`
-- `DOCKERHUB_TOKEN`
-- `AWS_ACCESS_KEY_ID` (optionnel)
-- `AWS_SECRET_ACCESS_KEY` (optionnel)
-- `AWS_REGION` (optionnel)
-- `AWS_CLUSTER_NAME` (optionnel)
-- `AWS_SERVICE_NAME` (optionnel)
+Surface d'attaque réduite (Alpine Linux) : Conteneurisation du backend et de la base de données via des images Docker basées sur Alpine Linux. Cela réduit le poids des images (optimisation CI/CD) et minimise les vecteurs de vulnérabilités (CVEs) en éliminant les paquets OS inutiles.
 
-### Notes de déploiement
-- Les images sont taguées avec `${{ github.sha }}` et `latest`
-- Le frontend lit `VITE_API_BASE_URL` lors du build
-- Pour AWS, utilisez une URL API de production dans `front/.env.production`
+Gestion des Secrets (Zero Trust) : Aucun mot de passe ni clé d'API n'est hardcodé. L'authentification à Docker Hub et au serveur AWS se fait via les variables d'environnement chiffrées de GitHub Secrets.
 
-## �📍 Remarque
-Le projet est conçu pour être présenté simplement en entretien : il montre une base back-front robuste, une API bien structurée et une interface fonctionnelle.
+Pare-feu Cloud (Security Groups AWS) : Isolation du réseau avec une stratégie de moindre privilège. Ouverture chirurgicale du port HTTP (80) pour l'UI, du port (8080) pour l'API REST, et sécurisation du port SSH (22) via des clés asymétriques.
+
+🚀 3. OPS : Opérations, CI/CD & Cloud
+
+Le cycle de vie du projet est entièrement géré par l'approche Infrastructure as Code et l'automatisation.
+
+Pipeline d'Intégration et Déploiement Continus (CI/CD)
+
+Un workflow GitHub Actions orchestre le déploiement. À chaque push sur la branche principale :
+
+Build : Compilation de l'API Java et du build de production React.
+
+Containerization : Création des images et Push vers le registre Docker Hub public.
+
+Delivery : Connexion automatisée via SSH à l'instance Cloud.
+
+Deploy : Exécution d'un docker compose pull et redémarrage sans interruption de service.
+
+Infrastructure Cloud AWS
+
+Hébergement : Instance EC2 (Ubuntu 24.04 LTS) gérant les requêtes de production.
+
+Orchestration : Choix de Docker Compose en production pour respecter les contraintes matérielles de la machine virtuelle (1 Go de RAM). Cela offre un excellent compromis entre isolation logicielle et légèreté (là où Kubernetes aurait consommé trop de ressources).
+
+Persistance des données : Utilisation de volumes Docker nommés (postgres-data) connectés au système de fichiers de l'hôte EC2 pour garantir la pérennité des données de la base PostgreSQL, même lors des mises à jour des conteneurs.
+
+📈 4. Axes d'Amélioration & Perspectives
+
+Bien que cette architecture réponde aux exigences initiales, plusieurs évolutions sont envisageables pour une mise en production à grande échelle (Scale-up) :
+
+[DEV] Intégration IoT Temps Réel : Remplacement des requêtes HTTP classiques par le protocole MQTT ou des WebSockets pour la remontée continue de données par des capteurs physiques.
+
+[SEC] Reverse Proxy & Chiffrement : Mise en place de Nginx en frontal pour centraliser le trafic, masquer le port de l'API (8080) et chiffrer les échanges de bout en bout via un certificat SSL (Let's Encrypt).
+
+[SEC] Identity & Access Management (IAM) : Intégration de Spring Security avec JWT (JSON Web Tokens) pour sécuriser les routes de l'API et implémenter une gestion fine des droits utilisateurs (Rôles Admin/User).
+
+[OPS] Observabilité & Monitoring : Déploiement d'une stack de supervision (ex: Prometheus + Grafana) pour surveiller la santé des conteneurs, l'utilisation RAM/CPU de l'instance AWS, et les métriques applicatives (Spring Boot Actuator).
+
+👨‍💻 À propos
+
+Mouhamadou Habib DIAO
