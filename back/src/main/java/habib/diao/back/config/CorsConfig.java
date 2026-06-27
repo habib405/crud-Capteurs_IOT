@@ -9,37 +9,9 @@ public class CorsConfig implements WebMvcConfigurer {
     
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/api/**")
-                .allowedOrigins("http://localhost", "http://localhost:5173", "http://localhost:80", "http://127.0.0.1", "http://127.0.0.1:5173", "http://127.0.0.1:80")
+        registry.addMapping("/**") 
+                .allowedOriginPatterns("*") 
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                .allowedHeaders("*")
-                .allowCredentials(true)
-                .maxAge(3600);
-
-        registry.addMapping("/v3/api-docs")
-                .allowedOrigins("http://localhost", "http://localhost:5173", "http://localhost:80", "http://127.0.0.1", "http://127.0.0.1:5173", "http://127.0.0.1:80")
-                .allowedMethods("GET", "OPTIONS")
-                .allowedHeaders("*")
-                .allowCredentials(true)
-                .maxAge(3600);
-
-        registry.addMapping("/v3/api-docs/**")
-                .allowedOrigins("http://localhost", "http://localhost:5173", "http://localhost:80", "http://127.0.0.1", "http://127.0.0.1:5173", "http://127.0.0.1:80")
-                .allowedMethods("GET", "OPTIONS")
-                .allowedHeaders("*")
-                .allowCredentials(true)
-                .maxAge(3600);
-
-        registry.addMapping("/swagger-ui/**")
-                .allowedOrigins("http://localhost", "http://localhost:5173", "http://localhost:80", "http://127.0.0.1", "http://127.0.0.1:5173", "http://127.0.0.1:80")
-                .allowedMethods("GET", "OPTIONS")
-                .allowedHeaders("*")
-                .allowCredentials(true)
-                .maxAge(3600);
-
-        registry.addMapping("/swagger-ui.html")
-                .allowedOrigins("http://localhost", "http://localhost:5173", "http://localhost:80", "http://127.0.0.1", "http://127.0.0.1:5173", "http://127.0.0.1:80")
-                .allowedMethods("GET", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true)
                 .maxAge(3600);
